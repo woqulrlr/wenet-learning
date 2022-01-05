@@ -45,9 +45,9 @@ asr_model.py、encoder.py、encoder_lyayer.py、attention.py的__init__函数，
 ```
 
 ### 模型第四层：
-下面展示transformer的实际计算过程。encoder_lyayer.py。
-wenet使用transformer作为encoder时，无需在input emb加入position emb。
-wenet构造encoder时，有self.normalize_before参数可选，前置layer_norm在残差之前，或者是后置layer_nromwenet example提供的yaml配置文件中，使用的是前置layer_norm，放置于残差residual之前。
+下面展示wenet的encoder_lyayer.py代码中transformer的实际计算过程，其实现与《attention is all you need》略有修改。
+* wenet使用transformer作为encoder时，无需在input emb加入position emb。
+* wenet构造encoder时，有self.normalize_before参数可选，前置layer_norm在残差之前，或者是后置layer_nromwenet example提供的yaml配置文件中，使用的是前置layer_norm，放置于残差residual之前。
 
 ```
 # 按example配置文件简化后的执行顺序
@@ -62,15 +62,18 @@ x = self.norm2(x)
 x = residual + self.dropout(self.feed_forward(x))
 ```
 
-*补图片
-*补计算过程
-
 ![transformer](https://github.com/woqulrlr/wenet-learning/blob/main/transformer.jpg)
 
 ### 模型第五层：
 attention的实际计算过程。attention.py
 *补图片
 *补计算过程
+
+```
+q, k, v = self.forward_qkv(query, key, value)
+scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.d_k)
+return self.forward_attention(v, scores, mask)
+```
 
 PositionwiseFeedForward，解释一下
 
