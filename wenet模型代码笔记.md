@@ -83,6 +83,7 @@ v = v.transpose(1, 2)  # (batch, head, time2, d_k)
 q, k, v = self.forward_qkv(query, key, value)
 # 计算scores，对应公式中的QK(T)
 scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.d_k)
+
 # 加入mask，因为训练过程，所以加入mask
 mask = mask.unsqueeze(1).eq(0)  # (batch, 1, *, time2)
 scores = scores.masked_fill(mask, -float('inf'))
