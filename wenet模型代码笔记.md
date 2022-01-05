@@ -46,7 +46,22 @@ asr_model.py、encoder.py、encoder_lyayer.py、attention.py的__init__函数，
 
 ### 模型第四层：
 下面展示transformer的实际计算过程。encoder_lyayer.py。
-position emb 已经在encoder.py的init、forward函数完成初始化和计算。
+wenet使用transformer作为encoder时，无需在input emb加入position emb。
+wenet构造encoder时，有self.normalize_before参数可选，前置layer_norm在残差之前，或者是后置layer_nromwenet example提供的yaml配置文件中，使用的是前置layer_norm，放置于残差residual之前。
+
+```
+# 按example配置文件简化后的执行顺序
+# 第一次 layer norm
+x = self.norm1(x)
+# 计算attention, 然后第一次残差
+x_q = x
+x = residual + self.dropout(self.self_attn(x_q, x, x, mask))
+# 第二次 layer norm
+x = self.norm2(x)
+# 计算feed_forward，然后第二次残差
+x = residual + self.dropout(self.feed_forward(x))
+```
+
 *补图片
 *补计算过程
 
