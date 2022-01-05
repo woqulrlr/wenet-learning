@@ -65,15 +65,29 @@ x = residual + self.dropout(self.feed_forward(x))
 ![transformer](https://github.com/woqulrlr/wenet-learning/blob/main/transformer.jpg)
 
 ### 模型第五层：
-attention的实际计算过程。attention.py
-*补图片
-*补计算过程
-
+下面展示wenet的attention.py代码中attention的实际计算过程。
 ```
+#此处代码对应下面右图，数据变形成multi_head所需形式
+#multi_head实际实现通过view改变数据shape，计算完成attention后，再通过view合并多头(attention is all you need中写作concat(head1,head2,...))
+#数据切分成multi_head所需的shape.此处数据shape变化为4，69，256===>4，69，（4，64）
+n_batch = query.size(0)
+q = self.linear_q(query).view(n_batch, -1, self.h, self.d_k)
+k = self.linear_k(key).view(n_batch, -1, self.h, self.d_k)
+v = self.linear_v(value).view(n_batch, -1, self.h, self.d_k)
+q = q.transpose(1, 2)  # (batch, head, time1, d_k)
+k = k.transpose(1, 2)  # (batch, head, time2, d_k)
+v = v.transpose(1, 2)  # (batch, head, time2, d_k)
+
+#此处代码对应左图Scaled Dot-Product Attention的计算
+# query, key, value经过全连接投影得到q, k, v;李沐视频中解释，经过lineaer投影模型有更多的参数可以学习
 q, k, v = self.forward_qkv(query, key, value)
+# 计算scores，对应公式中的QK(T)
 scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.d_k)
 return self.forward_attention(v, scores, mask)
 ```
+![multi_head_attention](https://github.com/woqulrlr/wenet-learning/blob/main/multi_head_attention.jpg)
+![multi_head_attention](https://github.com/woqulrlr/wenet-learning/blob/main/attention_formula.jpg)
+
 
 PositionwiseFeedForward，解释一下
 
