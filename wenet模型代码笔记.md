@@ -28,9 +28,10 @@ asr_model.py、encoder.py、encoder_lyayer.py、attention.py的__init__函数，
     )
 ```
 ### 模型第三层：
-下面代码是encoder.py的TransformerEncoder类的init函数()，wenet的encoder结构，首先是modulelist里面包裹结构一致的transformerencoderlayer,称为一个block。
-一个transformerencoderlayer由3大块组成，MultiHeadedAttention、PositionwiseFeedForward。
-如果选择Conformerencoderlayer,而不是Transformerencoderlayer，那么layer中的子块可以从MultiHeadedAttention、RelPositionMultiHeadedAttention二者择其一。
+下面代码是encoder.py的TransformerEncoder类的init函数()，它展示wenet的encoder结构。
+首先，modulelist里面使用for循环生成结构一致的子结构---transformerencoderlayer,每一个子结构称为block。
+然后，transformerencoderlayer由2大块组成，MultiHeadedAttention、PositionwiseFeedForward。
+最后，如果选择Conformerencoderlayer作为block,而不是Transformerencoderlayer，子结构的子块可以从MultiHeadedAttention、RelPositionMultiHeadedAttention二者择其一。
 ```
         self.encoders = torch.nn.ModuleList([
             TransformerEncoderLayer(
@@ -44,7 +45,8 @@ asr_model.py、encoder.py、encoder_lyayer.py、attention.py的__init__函数，
 ```
 
 ### 模型第四层：
-transformer的实际计算过程。encoder_lyayer.py
+下面展示transformer的实际计算过程。encoder_lyayer.py。
+position emb 已经在encoder.py的init、forward函数完成初始化和计算。
 *补图片
 *补计算过程
 
