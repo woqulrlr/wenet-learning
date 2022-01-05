@@ -69,7 +69,7 @@ x = residual + self.dropout(self.feed_forward(x))
 ```
 #此处代码对应下面右图，数据变形成multi_head所需形式
 #multi_head实际实现通过view改变数据shape，计算完成attention后，再通过view合并多头(attention is all you need中写作concat(head1,head2,...))
-#数据切分成multi_head所需的shape.此处数据shape变化为4，69，256===>4，69，（4，64）
+#数据切分成multi_head所需的shape.此处数据shape变化为[4，69，256]===>[4，69，（4，64）]
 n_batch = query.size(0)
 q = self.linear_q(query).view(n_batch, -1, self.h, self.d_k)
 k = self.linear_k(key).view(n_batch, -1, self.h, self.d_k)
@@ -83,7 +83,17 @@ v = v.transpose(1, 2)  # (batch, head, time2, d_k)
 q, k, v = self.forward_qkv(query, key, value)
 # 计算scores，对应公式中的QK(T)
 scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.d_k)
-return self.forward_attention(v, scores, mask)
+# 加入mask，因为训练过程，所以加入mask
+mask = mask.unsqueeze(1).eq(0)  # (batch, 1, *, time2)
+scores = scores.masked_fill(mask, -float('inf'))
+# 计算softmax,对应公式的softmax
+attn = torch.softmax(scores, dim=-1).masked_fill(mask, 0.0)  # (batch, head, time1, time2)
+# dropout
+p_attn = self.dropout(attn)
+# 对应公式dot V
+x = torch.matmul(p_attn, value)  # (batch, head, time1, d_k)
+# multi_head合并，shape[4, 4, 69, 64]===>[4, 69, 256]
+x = (x.transpose(1, 2).contiguous().view(n_batch, -1,self.h * self.d_k))  # (batch, time1, d_model)
 ```
 ![multi_head_attention](https://github.com/woqulrlr/wenet-learning/blob/main/multi_head_attention.jpg)
 ![multi_head_attention](https://github.com/woqulrlr/wenet-learning/blob/main/attention_formula.jpg)
