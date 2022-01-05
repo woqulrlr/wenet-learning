@@ -30,7 +30,7 @@ asr_model.py、encoder.py、encoder_lyayer.py、attention.py的__init__函数，
 ### 模型第三层：
 下面代码是encoder.py的TransformerEncoder类的init函数()，它展示wenet的encoder结构。
 首先，modulelist里面使用for循环生成结构一致的子结构---transformerencoderlayer,每一个子结构称为block。
-然后，transformerencoderlayer由2大块组成，MultiHeadedAttention、PositionwiseFeedForward。
+然后，transformerencoderlayer由2大块组成，MultiHeadedAttention、PositionwiseFeedForward。PositionwiseFeedForward简单的全连接层，详细可以直接看源代码。
 最后，如果选择Conformerencoderlayer作为block,而不是Transformerencoderlayer，子结构的子块可以从MultiHeadedAttention、RelPositionMultiHeadedAttention二者择其一。
 ```
         self.encoders = torch.nn.ModuleList([
@@ -100,14 +100,7 @@ x = (x.transpose(1, 2).contiguous().view(n_batch, -1,self.h * self.d_k))  # (bat
 ![multi_head_attention](https://github.com/woqulrlr/wenet-learning/blob/main/attention_formula.jpg)
 
 
-PositionwiseFeedForward，解释一下
-
-
-
-
-multiple-attention的计算&代码实现
-
-transformer
+decode部分
 
 attention&RNN/LSTM的比较
 
