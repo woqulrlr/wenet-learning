@@ -47,7 +47,7 @@ asr_model.py、encoder.py、encoder_lyayer.py、attention.py的__init__函数，
 transformer的实际计算过程。encoder_lyayer.py
 *补图片
 *补计算过程
-![transformer](https://github.com/woqulrlr/wenet-learning/blob/main/transformer.jpg)
+![test](https://github.com/woqulrlr/wenet-learning/blob/main/transformer.jpg)
 
 ### 模型第五层：
 attention的实际计算过程。attention.py
