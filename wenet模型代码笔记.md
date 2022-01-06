@@ -10,10 +10,10 @@ wenet toolkit进行训练流程时，需为train.py使用时配置"--config xxx.
 本片笔记以transformer为例，记录解读wenet toolkit的训练流程。
 
 
-## 3.1 train代码outside
+## 3.1 train encode 代码outside
 
 ### 模型第一层：
-模型层级：train.py--->asr_model.py--->encoder.py--->encoder_lyayer.py--->attention.py
+模型层级：train.py--->asr_model.py--->encoder.py--->encoder_layer.py--->attention.py
 asr_model.py、encoder.py、encoder_lyayer.py、attention.py的__init__函数，负责初始化模型类；forward函数，负责控制数据流向、计算。
 ### 模型第二层：
 下面代码是asr_model.py的init_asr_model()函数，wenet模型主要由3大块组成，encoder(ConformerEncoder/TransformerEncoder)、decoder(TransformerDecoder/BiTransformerDecoder)、ctc：
@@ -99,15 +99,69 @@ x = (x.transpose(1, 2).contiguous().view(n_batch, -1,self.h * self.d_k))  # (bat
 ![multi_head_attention](https://github.com/woqulrlr/wenet-learning/blob/main/multi_head_attention.jpg)
 ![multi_head_attention](https://github.com/woqulrlr/wenet-learning/blob/main/attention_formula.jpg)
 
-
+***************************************************************
 decode部分
 
 attention&RNN/LSTM的比较
 
 混合精度mixed precision training、多卡训练ddp、自动混合精度amp
+***************************************************************
 
+## 3.2 train decode 代码outside
+模型层级：asr_model.py--->decode.py--->decode_layer.py--->attention.py
+在asr_model.py代码主要步骤有以下3步，encoder部分已经在3.1说明。接下来对decoder和CTC branch部分进行解析和代码解读。
+step1: encoder
+step2a: decoder
+step2b: CTC branch
 
+### step2a: decoder
+#### decode.py代码主要实现4件事情，
+1.生成tgt_mask矩阵，此处生成的mask矩阵大小为[Batch，Len，Len],Len指训练音频样本对应的字符长度。
+2.运算decode(x,tgt_mask,menory,memory_mask)，其中x指训练样本对应的字符串的embedding结果。
+3.norm
+4.linear，将decode结果从256，投影为vocab_size的大小。
 
+#### decode_layer.py主要实现3个步骤，以伪代码的形式在下方写出,并给出《attention is all you need》图片对照参考。
+在wenet中norm的执行顺序被前置了。
+```
+step1 : {
+    norm
+    attention(tgt_q,tgt,tgt,tgt_q_mask) #tgt_q = tgt = embed(字符)
+    dropout + residual
+},
+step2 : {
+    norm
+    attention(x, memory, memory, memory_mask) #x=step1 attention的输出进行residual后的结果，memory=encode的结果
+    dropout + residual
+}
+step3 : {
+    norm
+    feed_forward
+    dropout + residual
+}
+```
+
+![multi_head_attention](https://github.com/woqulrlr/wenet-learning/blob/main/transformer2.jpg)
+
+#### attention.py已在3.1进行解析，不再次做解析。
+完成step2a: decoder后，decode结果 与 训练样本对应的实际字符串计算loss，loss的计算方式使用LabelSmoothingLoss。如果decode_layer采用BiTransformerDecoder，则计算"从左往右decode"和"从右往左decode"两次解码，两次loss，两次loss根据权重进行加权求和为最终loss。权重为超参数。
+
+### step2b: CTC branch主要进行两个计算
+```
+        ys_hat = self.ctc_lo(F.dropout(hs_pad, p=self.dropout_rate))
+        # ys_hat: (B, L, D) -> (L, B, D)
+        ys_hat = ys_hat.transpose(0, 1)
+        ys_hat = ys_hat.log_softmax(2)
+        loss = self.ctc_loss(ys_hat, ys_pad, hlens, ys_lens)
+```
+
+***************************************************************
+mask矩阵逐个打开？
+
+什么是LabelSmoothingLoss？
+
+train 和 recognition，decode都是逐个预测的吗？
+***************************************************************
 
 # 4.识别recognize
 
