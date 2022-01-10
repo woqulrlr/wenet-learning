@@ -161,6 +161,8 @@ mask矩阵逐个打开？
 什么是LabelSmoothingLoss？
 
 train 和 recognition，decode都是逐个预测的吗？
+
+multi-attention的训练数据，是从什么维度进行切分的
 ***************************************************************
 
 # 4.识别recognize
