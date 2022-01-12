@@ -162,10 +162,31 @@ mask矩阵逐个打开？
 
 train 和 recognition，decode都是逐个预测的吗？
 
-multi-attention的训练数据，是从什么维度进行切分的
+multi-attention的训练数据，是从什么维度进行切分的：multi-head输入attention时，feat的shape[batch,time,faet_dimention]，切分从feat_dimention
 ***************************************************************
 
 # 4.识别recognize
+
+## 4.1 attention
+
+使用训练一致的encoder，
+使用multi-head作decoder,
+使用decode结果作为最后结果，
+decode是逐帧解码的，逐帧解码与train的区别是：decode下一步的解码，都需要前一步block的解码结果，decode的输出作为query的输入（query、key、value）。
+
+## 4.2 ctc_greedy_search
+
+
+使用训练一致的encoder，
+使用训练过的linear作decoder（此linear在训练时用ctc loss进行训练），
+使用decode结果作为最后结果，
+不是逐帧解码的，一次性得到encode对应的所有结果。
+
+## 4.3 ctc_prefix_beam_search
+
+同上4.2解码方式，附加一个beam search解码。
+
+## 4.4 attention_rescoring
 
 # 5.模型抽取jit
 
