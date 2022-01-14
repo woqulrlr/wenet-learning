@@ -188,6 +188,10 @@ decode是逐帧解码的，逐帧解码与train的区别是：decode下一步的
 
 ## 4.4 attention_rescoring
 
+(1)encode
+(2)CTC解码encode
+(3)BiTransformer解码encode，CTC解码 + encode embedding作为输入。
+
 # 5.模型抽取jit
 
 # 6.部署deploy
