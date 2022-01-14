@@ -187,11 +187,21 @@ decode是逐帧解码的，逐帧解码与train的区别是：decode下一步的
 同上4.2解码方式，附加一个beam search解码。
 
 ## 4.4 attention_rescoring
-
+```
 (1)encode
+
 (2)CTC解码encode
+
 (3)BiTransformer解码encode，CTC解码 + encode embedding作为输入。
 
+(4)score计算
+    1. for 5句CTC
+    2. for 每句CTC的charlist
+        3. left to right transformer, for 每句CTC的charlist的，每个字 score_left_to_right
+        4. right to left transformer, for 每句CTC的charlist的，每个字 score_right_to_left
+    5. weight*score_left_to_right + weight*score_right_to_left
+    6. CTC句子级score + (weight*score_left_to_right + weight*score_right_to_left)
+```
 # 5.模型抽取jit
 
 # 6.部署deploy
