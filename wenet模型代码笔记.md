@@ -31,6 +31,19 @@ x + (np.random.random_sample(x.shape) - 0.5) * a ： 生成范围在([0,1) - 0.5
 #### * _spec_substitute
 对频谱图进行随机修改，将某段频谱图置0。(未完整)
 
+#### _spec_augmentation
+```
+torchaudio.sox_effects.apply_effects_tensor(tensor: torch.Tensor, sample_rate: int, effects: List[List[str]], channels_first: bool = True) → Tuple[torch.Tensor, int]
+
+tensor (torch.Tensor) – Input 2D CPU Tensor.
+
+sample_rate (int) – Sample rate
+
+effects (List[List[str]]) – List of effects.
+
+channels_first (bool, optional) – Indicates if the input Tensor’s dimension is [channels, time] or [time, channels]
+
+```
 
 # 3.训练train
 
