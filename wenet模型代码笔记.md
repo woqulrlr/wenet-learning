@@ -21,6 +21,18 @@ padding
 使用pytorch的sox的接口进行音频数据增强，实现音频变速。
 更多具体内容可查看https://pytorch.org/audio/stable/sox_effects.html。
 
+#### _waveform_distortion
+通过自定义的函数实现各种失真模拟。模拟的种类有：
+```
+'gain_db'
+'max_distortion'
+'fence_distortion'
+'jag_distortion'
+'poly_distortion'
+'quad_distortion'
+'none_distortion'
+```
+
 #### feature_dither
 ```
 a = random.uniform(0, self.feature_dither)
@@ -35,18 +47,6 @@ x + (np.random.random_sample(x.shape) - 0.5) * a ： 生成范围在([0,1) - 0.5
 
 #### * _spec_augmentation
 对频谱图进行随机修改，将某段频谱图置0。(未完整)
-
-#### _waveform_distortion
-通过自定义的函数实现各种失真模拟。模拟的种类有：
-```
-'gain_db'
-'max_distortion'
-'fence_distortion'
-'jag_distortion'
-'poly_distortion'
-'quad_distortion'
-'none_distortion'
-```
 
 # 3.训练train
 
