@@ -9,13 +9,22 @@
 Collate_fn是pytorch的dataloader数据导入模块中的数据处理函数。用户可以使用自定义的collate_fn来实现自定义数据批处理。批处理后的数据将作为dataloader的输出。wenet的Collate_fn详细见于，wenet--->dataset--->datset.py--->CollateFunc--->__call__。下面是CollateFunc的数据处理实现：
 ```
 _extract_feature
-    _load_wav_with_speed
+    _load_wav_with_speed(speed_perturb,optinoal)
     _waveform_distortion
 feature_dither(optinoal)
 _spec_substitute(optinoal)
 _spec_augmentation(optinoal)
 padding
 ```
+#### feature_dither
+```
+a = random.uniform(0, self.feature_dither)
+xs = [x + (np.random.random_sample(x.shape) - 0.5) * a for x in xs]
+```
+xs是一个batch,x是一个sample。
+np.random.random_sample生成一个[0,1)的随机数。x.shape是x即sample的长度。
+x + (np.random.random_sample(x.shape) - 0.5) * a ： 生成范围在([0,1) - 0.5) * a的随机数，数量与x.shape一致，并将随机数与x的每一个元素，一一对应相加(类似element wise)。
+
 
 # 3.训练train
 
