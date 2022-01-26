@@ -25,6 +25,12 @@ xs是一个batch,x是一个sample。
 np.random.random_sample生成一个[0,1)的随机数。x.shape是x即sample的长度。
 x + (np.random.random_sample(x.shape) - 0.5) * a ： 生成范围在([0,1) - 0.5) * a的随机数，数量与x.shape一致，并将随机数与x的每一个元素，一一对应相加(类似element wise)。
 
+#### _spec_substitute
+或将频谱图，音频整段后移。如0-30frame的音频，截取10-20frame,替换15-25frame的音频。
+
+#### * _spec_substitute
+对频谱图进行随机修改，将某段频谱图置0。(未完整)
+
 
 # 3.训练train
 
