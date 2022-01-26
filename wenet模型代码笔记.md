@@ -4,6 +4,19 @@
 
 # 2.* 数据处理
 
+## 2.1 dataloader
+## 2.2 Collate_fn
+Collate_fn是pytorch的dataloader数据导入模块中的数据处理函数。用户可以使用自定义的collate_fn来实现自定义数据批处理。批处理后的数据将作为dataloader的输出。wenet的Collate_fn详细见于，wenet--->dataset--->datset.py--->CollateFunc--->__call__。下面是CollateFunc的数据处理实现：
+```
+_extract_feature
+    _load_wav_with_speed
+    _waveform_distortion
+feature_dither(optinoal)
+_spec_substitute(optinoal)
+_spec_augmentation(optinoal)
+padding
+```
+
 # 3.训练train
 
 wenet toolkit进行训练流程时，需为train.py使用时配置"--config xxx.yaml"，可以选择transformer、conformer等不同的模型结构。
