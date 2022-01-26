@@ -16,6 +16,11 @@ _spec_substitute(optinoal)
 _spec_augmentation(optinoal)
 padding
 ```
+
+#### _load_wav_with_speed（speed_perturb）
+使用pytorch的sox的接口进行音频数据增强，实现音频变速。
+更多具体内容可查看https://pytorch.org/audio/stable/sox_effects.html。
+
 #### feature_dither
 ```
 a = random.uniform(0, self.feature_dither)
@@ -28,21 +33,19 @@ x + (np.random.random_sample(x.shape) - 0.5) * a ： 生成范围在([0,1) - 0.5
 #### _spec_substitute
 或将频谱图，音频整段后移。如0-30frame的音频，截取10-20frame,替换15-25frame的音频。
 
-#### * _spec_substitute
+#### * _spec_augmentation
 对频谱图进行随机修改，将某段频谱图置0。(未完整)
 
-#### _spec_augmentation
+#### _waveform_distortion
+通过自定义的函数实现各种失真模拟。模拟的种类有：
 ```
-torchaudio.sox_effects.apply_effects_tensor(tensor: torch.Tensor, sample_rate: int, effects: List[List[str]], channels_first: bool = True) → Tuple[torch.Tensor, int]
-
-tensor (torch.Tensor) – Input 2D CPU Tensor.
-
-sample_rate (int) – Sample rate
-
-effects (List[List[str]]) – List of effects.
-
-channels_first (bool, optional) – Indicates if the input Tensor’s dimension is [channels, time] or [time, channels]
-
+'gain_db'
+'max_distortion'
+'fence_distortion'
+'jag_distortion'
+'poly_distortion'
+'quad_distortion'
+'none_distortion'
 ```
 
 # 3.训练train
