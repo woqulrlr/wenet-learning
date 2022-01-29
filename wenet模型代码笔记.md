@@ -1,4 +1,5 @@
 本篇主要内容是wenet模型的代码笔记、工程向的阅读笔记
+源码地址：https://github.com/wenet-e2e/wenet
 
 # 1.* 数据采集
 
