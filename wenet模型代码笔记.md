@@ -251,6 +251,13 @@ decode是逐帧解码的，逐帧解码与train的区别是：decode下一步的
     5. weight*score_left_to_right + weight*score_right_to_left
     6. CTC句子级score + (weight*score_left_to_right + weight*score_right_to_left)
 ```
+
+## 4.5 shallow fusion LM
+
+https://zhuanlan.zhihu.com/p/74696938
+
+https://bbs.huaweicloud.com/blogs/269842
+
 # 5.模型抽取jit
 
 # 6.部署deploy
