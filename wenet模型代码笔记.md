@@ -234,19 +234,21 @@ decode是逐帧解码的，逐帧解码与train的区别是：decode下一步的
 ## 4.3 ctc_prefix_beam_search
 
 ```
-# decode + ctc，输出概率矩阵，概率矩阵shape[字符长度，vocabulary]
-ctc_probs = self.ctc.log_softmax(
-    encoder_out)  # (1, maxlen, vocab_size)
-ctc_probs = ctc_probs.squeeze(0)
+# ctc_probs概率矩阵，概率矩阵shape[ctc解码字符长度，vocabulary]
+ctc_probs = self.ctc.log_softmax(encoder_out)
+
 # cur_hyps: (prefix, (blank_ending_score, none_blank_ending_score))
 # prefix：完成beam_search输出的字符；blank_ending_score：空/停顿的概率；none_blank_ending_score：非空/非停顿的概率
 cur_hyps = [(tuple(), (0.0, -float('inf')))]
+
 # 2. CTC beam search step by step
 for t in range(0, maxlen):
     logp = ctc_probs[t]  # (vocab_size,)
+    
     # key: prefix, value (pb, pnb), default value(-inf, -inf)
     # pb：prob of blank；pnb：prob of no blank
     next_hyps = defaultdict(lambda: (-float('inf'), -float('inf')))
+    
     # 2.1 First beam prune: select topk best
     top_k_logp, top_k_index = logp.topk(beam_size)  # (beam_size,)
     for s in top_k_index:
