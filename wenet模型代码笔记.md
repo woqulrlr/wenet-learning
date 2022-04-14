@@ -234,50 +234,53 @@ decode是逐帧解码的，逐帧解码与train的区别是：decode下一步的
 ## 4.3 ctc_prefix_beam_search
 
 ```
-        ctc_probs = self.ctc.log_softmax(
-            encoder_out)  # (1, maxlen, vocab_size)
-        ctc_probs = ctc_probs.squeeze(0)
-        # cur_hyps: (prefix, (blank_ending_score, none_blank_ending_score))
-        cur_hyps = [(tuple(), (0.0, -float('inf')))]
-        # 2. CTC beam search step by step
-        for t in range(0, maxlen):
-            logp = ctc_probs[t]  # (vocab_size,)
-            # key: prefix, value (pb, pnb), default value(-inf, -inf)
-            next_hyps = defaultdict(lambda: (-float('inf'), -float('inf')))
-            # 2.1 First beam prune: select topk best
-            top_k_logp, top_k_index = logp.topk(beam_size)  # (beam_size,)
-            for s in top_k_index:
-                s = s.item()
-                ps = logp[s].item()
-                for prefix, (pb, pnb) in cur_hyps:
-                    last = prefix[-1] if len(prefix) > 0 else None
-                    if s == 0:  # blank
-                        n_pb, n_pnb = next_hyps[prefix]
-                        n_pb = log_add([n_pb, pb + ps, pnb + ps])
-                        next_hyps[prefix] = (n_pb, n_pnb)
-                    elif s == last:
-                        #  Update *ss -> *s;
-                        n_pb, n_pnb = next_hyps[prefix]
-                        n_pnb = log_add([n_pnb, pnb + ps])
-                        next_hyps[prefix] = (n_pb, n_pnb)
-                        # Update *s-s -> *ss, - is for blank
-                        n_prefix = prefix + (s, )
-                        n_pb, n_pnb = next_hyps[n_prefix]
-                        n_pnb = log_add([n_pnb, pb + ps])
-                        next_hyps[n_prefix] = (n_pb, n_pnb)
-                    else:
-                        n_prefix = prefix + (s, )
-                        n_pb, n_pnb = next_hyps[n_prefix]
-                        n_pnb = log_add([n_pnb, pb + ps, pnb + ps])
-                        next_hyps[n_prefix] = (n_pb, n_pnb)
+# decode + ctc，输出概率矩阵，概率矩阵shape[字符长度，vocabulary]
+ctc_probs = self.ctc.log_softmax(
+    encoder_out)  # (1, maxlen, vocab_size)
+ctc_probs = ctc_probs.squeeze(0)
+# cur_hyps: (prefix, (blank_ending_score, none_blank_ending_score))
+# prefix：完成beam_search输出的字符；blank_ending_score：空/停顿的概率；none_blank_ending_score：非空/非停顿的概率
+cur_hyps = [(tuple(), (0.0, -float('inf')))]
+# 2. CTC beam search step by step
+for t in range(0, maxlen):
+    logp = ctc_probs[t]  # (vocab_size,)
+    # key: prefix, value (pb, pnb), default value(-inf, -inf)
+    # pb：prob of blank；pnb：prob of no blank
+    next_hyps = defaultdict(lambda: (-float('inf'), -float('inf')))
+    # 2.1 First beam prune: select topk best
+    top_k_logp, top_k_index = logp.topk(beam_size)  # (beam_size,)
+    for s in top_k_index:
+        s = s.item()
+        ps = logp[s].item()
+        for prefix, (pb, pnb) in cur_hyps:
+            last = prefix[-1] if len(prefix) > 0 else None
+            if s == 0:  # blank
+                n_pb, n_pnb = next_hyps[prefix]
+                n_pb = log_add([n_pb, pb + ps, pnb + ps])
+                next_hyps[prefix] = (n_pb, n_pnb)
+            elif s == last:
+                #  Update *ss -> *s;
+                n_pb, n_pnb = next_hyps[prefix]
+                n_pnb = log_add([n_pnb, pnb + ps])
+                next_hyps[prefix] = (n_pb, n_pnb)
+                # Update *s-s -> *ss, - is for blank
+                n_prefix = prefix + (s, )
+                n_pb, n_pnb = next_hyps[n_prefix]
+                n_pnb = log_add([n_pnb, pb + ps])
+                next_hyps[n_prefix] = (n_pb, n_pnb)
+            else:
+                n_prefix = prefix + (s, )
+                n_pb, n_pnb = next_hyps[n_prefix]
+                n_pnb = log_add([n_pnb, pb + ps, pnb + ps])
+                next_hyps[n_prefix] = (n_pb, n_pnb)
 
-            # 2.2 Second beam prune
-            next_hyps = sorted(next_hyps.items(),
-                               key=lambda x: log_add(list(x[1])),
-                               reverse=True)
-            cur_hyps = next_hyps[:beam_size]
-        hyps = [(y[0], log_add([y[1][0], y[1][1]])) for y in cur_hyps]
-        return hyps, encoder_out
+    # 2.2 Second beam prune
+    next_hyps = sorted(next_hyps.items(),
+                       key=lambda x: log_add(list(x[1])),
+                       reverse=True)
+    cur_hyps = next_hyps[:beam_size]
+hyps = [(y[0], log_add([y[1][0], y[1][1]])) for y in cur_hyps]
+return hyps, encoder_out
 ```
 
 ## 4.4 attention_rescoring
