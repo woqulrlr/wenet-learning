@@ -234,7 +234,8 @@ decode是逐帧解码的，逐帧解码与train的区别是：decode下一步的
 ## 4.3 ctc_prefix_beam_search
 
 ```
-# ctc_probs概率矩阵，概率矩阵shape[ctc解码字符长度，vocabulary]
+# ctc_probs概率矩阵，概率矩阵shape[ctc解码字符长度，vocabulary]，
+# 例：torch.Size([148, 4233])
 ctc_probs = self.ctc.log_softmax(encoder_out)
 
 # cur_hyps: (prefix, (blank_ending_score, none_blank_ending_score))
@@ -242,18 +243,23 @@ ctc_probs = self.ctc.log_softmax(encoder_out)
 cur_hyps = [(tuple(), (0.0, -float('inf')))]
 
 # 2. CTC beam search step by step
-for t in range(0, maxlen):
-    logp = ctc_probs[t]  # (vocab_size,)
+for t in range(0, maxlen):# 例 maxlen = 148
+    logp = ctc_probs[t]  # (vocab_size,),torch.Size([4233]),每个字的概率
     
     # key: prefix, value (pb, pnb), default value(-inf, -inf)
     # pb：prob of blank；pnb：prob of no blank
-    next_hyps = defaultdict(lambda: (-float('inf'), -float('inf')))
+    
+    #例： {(2995,): (-0.00016307625787703728, -inf), (70,): (-10.18041968259945, -inf), (2995, 2553): (-10.916154154024202, -inf), (254,): (-11.645881483306317, -inf), (2995, 254): (-11.696770409974455, -inf)}
+    # (2995,254，xxx,xxx)字符串
+    # (-11.696770409974455, -inf)，第一个是n_pb, 第二个是n_pnb
+    next_hyps = defaultdict(lambda: (-float('inf'), -float('inf'))) 
+    
     
     # 2.1 First beam prune: select topk best
-    top_k_logp, top_k_index = logp.topk(beam_size)  # (beam_size,)
-    for s in top_k_index:
-        s = s.item()
-        ps = logp[s].item()
+    top_k_logp, top_k_index = logp.topk(beam_size)  # (beam_size,)，选top5;top_k_logp 概率，top_k_index 字
+    for s in top_k_index:#循环top5的字
+        s = s.item()# 字
+        ps = logp[s].item()# 概率
         for prefix, (pb, pnb) in cur_hyps:
             last = prefix[-1] if len(prefix) > 0 else None
             if s == 0:  # blank
