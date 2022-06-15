@@ -269,7 +269,7 @@ for t in range(0, maxlen):# 例 maxlen = 148
             elif s == last:
                 #  Update *ss -> *s;
                 n_pb, n_pnb = next_hyps[prefix]
-                n_pnb = log_add([n_pnb, pnb + ps])
+                n_pnb = log_add([n_pnb, pnb + ps]) #log_add解析，1.[n_pnb, pnb + ps]先做归一化，(math.exp(a - a_max) for a in args)；2.sum；3.log；4.a_max+log
                 next_hyps[prefix] = (n_pb, n_pnb)
                 # Update *s-s -> *ss, - is for blank
                 n_prefix = prefix + (s, )
