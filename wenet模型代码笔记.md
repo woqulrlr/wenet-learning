@@ -280,7 +280,7 @@ for t in range(0, maxlen):# 例 maxlen = 148
                 n_prefix = prefix + (s, )
                 n_pb, n_pnb = next_hyps[n_prefix] #产生默认值（-inf,inf）,next_hyps = defaultdict(lambda: (-float('inf'), -float('inf')))
                 n_pnb = log_add([n_pnb, pb + ps, pnb + ps]) #>??????,为什么这样更新
-                next_hyps[n_prefix] = (n_pb, n_pnb) #更新next_porb_no_blank的概率值； 不更新next_prob_blank
+                next_hyps[n_prefix] = (n_pb, n_pnb) #因为是非blank(silence),所以只更新next_porb_no_blank的概率值； 不更新next_prob_blank
 
     # 2.2 Second beam prune
     next_hyps = sorted(next_hyps.items(),
