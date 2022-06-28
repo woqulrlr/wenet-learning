@@ -234,42 +234,35 @@ decode是逐帧解码的，逐帧解码与train的区别是：decode下一步的
 ## 4.3 ctc_prefix_beam_search
 
 ```
-# ctc_probs概率矩阵，概率矩阵shape[ctc解码字符长度，vocabulary]，
-# 例：torch.Size([148, 4233])
-ctc_probs = self.ctc.log_softmax(encoder_out)
-
+# ctc_probs : [4233,148],[vocab,frame_len]
+ctc_probs = self.ctc.log_softmax(encoder_out)  # (1, maxlen, vocab_size)
+ctc_probs = ctc_probs.squeeze(0)
 # cur_hyps: (prefix, (blank_ending_score, none_blank_ending_score))
-# prefix：完成beam_search输出的字符；blank_ending_score：空/停顿的概率；none_blank_ending_score：非空/非停顿的概率
 cur_hyps = [(tuple(), (0.0, -float('inf')))]
-
 # 2. CTC beam search step by step
-for t in range(0, maxlen):# 例 maxlen = 148
-    logp = ctc_probs[t]  # (vocab_size,),torch.Size([4233]),每个字的概率
-    
+# 循环帧,for 1 to 148
+for t in range(0, maxlen):
+    logp = ctc_probs[t]  # (vocab_size,)
     # key: prefix, value (pb, pnb), default value(-inf, -inf)
-    # pb：prob of blank；pnb：prob of no blank
-    
-    #例： {(2995,): (-0.00016307625787703728, -inf), (70,): (-10.18041968259945, -inf), (2995, 2553): (-10.916154154024202, -inf), (254,): (-11.645881483306317, -inf), (2995, 254): (-11.696770409974455, -inf)}
-    # (2995,254，xxx,xxx)字符串
-    # (-11.696770409974455, -inf)，第一个是n_pb, 第二个是n_pnb
-    next_hyps = defaultdict(lambda: (-float('inf'), -float('inf'))) 
-    
-    
+    next_hyps = defaultdict(lambda: (-float('inf'), -float('inf')))
     # 2.1 First beam prune: select topk best
-    top_k_logp, top_k_index = logp.topk(beam_size)  # (beam_size,)，选top5;top_k_logp 概率，top_k_index 字
-    for s in top_k_index:#循环top5的字
-        s = s.item()# 字
-        ps = logp[s].item()# 概率
+    top_k_logp, top_k_index = logp.topk(beam_size)  # (beam_size,)
+# 循环vocab top5, for 1 to 5
+    for s in top_k_index:
+        s = s.item()
+        ps = logp[s].item()
+# init情况：cur_hyps = [(tuple(), (0.0, -float('inf')))]
+# 一般情况：循环cur_hyps = 上一帧,next_hyps[:top5]
         for prefix, (pb, pnb) in cur_hyps:
             last = prefix[-1] if len(prefix) > 0 else None
             if s == 0:  # blank
                 n_pb, n_pnb = next_hyps[prefix]
-                n_pb = log_add([n_pb, pb + ps, pnb + ps]) #>??????,为什么这样更新
-                next_hyps[prefix] = (n_pb, n_pnb) #因为是blank(silence),所以只更新next_prob_blank的概率值;不更新next_porb_no_blank
+                n_pb = log_add([n_pb, pb + ps, pnb + ps])
+                next_hyps[prefix] = (n_pb, n_pnb)
             elif s == last:
                 #  Update *ss -> *s;
                 n_pb, n_pnb = next_hyps[prefix]
-                n_pnb = log_add([n_pnb, pnb + ps]) #log_add解析，1.[n_pnb, pnb + ps]先做归一化，(math.exp(a - a_max) for a in args)；2.sum；3.log；4.a_max+log
+                n_pnb = log_add([n_pnb, pnb + ps])
                 next_hyps[prefix] = (n_pb, n_pnb)
                 # Update *s-s -> *ss, - is for blank
                 n_prefix = prefix + (s, )
@@ -278,17 +271,64 @@ for t in range(0, maxlen):# 例 maxlen = 148
                 next_hyps[n_prefix] = (n_pb, n_pnb)
             else:
                 n_prefix = prefix + (s, )
-                n_pb, n_pnb = next_hyps[n_prefix] #next_hypes无对应key,则产生默认值（-inf,inf）,next_hyps = defaultdict(lambda: (-float('inf'), -float('inf')))
-                n_pnb = log_add([n_pnb, pb + ps, pnb + ps]) #>??????,为什么这样更新
-                next_hyps[n_prefix] = (n_pb, n_pnb) #因为是非blank(非silence),所以只更新next_porb_no_blank的概率值;不更新next_prob_blank
+                n_pb, n_pnb = next_hyps[n_prefix]
+                n_pnb = log_add([n_pnb, pb + ps, pnb + ps])
+                next_hyps[n_prefix] = (n_pb, n_pnb)
 
     # 2.2 Second beam prune
     next_hyps = sorted(next_hyps.items(),
-                       key=lambda x: log_add(list(x[1])),
-                       reverse=True)
+                        key=lambda x: log_add(list(x[1])),
+                        reverse=True)
     cur_hyps = next_hyps[:beam_size]
 hyps = [(y[0], log_add([y[1][0], y[1][1]])) for y in cur_hyps]
 return hyps, encoder_out
+
+'''
+样例：
+for 1 to 148: #帧长度
+    for 1 to 5(vocab top 5 prob): # 样例 [0,2553,254,66,2]
+        if init:
+            for 1 to 1(init cur_probs): # 样例 [(tuple(), (0.0, -float('inf')))]
+        if normal:
+            for 1 to 5(ante-frame-next-probs): # 获取perfix解码的字符串, pb空音节概率, pnb非空音节概率
+            # 样例 :[
+                ((2995,), (-8.570991576561937e-05, -inf)), 
+                ((70,), (-10.180342316257338, -inf)), 
+                ((254,), (-11.645804116968465, -37.82777262610004)), 
+                ((2995, 2553), (-12.848886846015375, -12.340473167102271)), 
+                ((2995, 254), (-13.348096250007075, -12.974998545777169))
+            ]
+
+            if s == 0:
+            if s == last:
+
+                if *ss -> *s:
+                    init next_hyps[prefix] #init next_hyps, key=prefix
+                    n_pnb = log_add([n_pnb, pnb + ps]) #init next_hyps, value n_pnb赋新值, n_pb赋初值
+                    # n_pnb ---> next_hyps-非空音节-概率, 
+                    # pnb ---> cur_hyps-非空音节-概率, -12.340473167102271 
+                    # ps ---> vocab-概率,    -12.476441383361816
+                    next_hyps[prefix] = (n_pb, n_pnb)
+
+                if *s-s -> *ss:
+                    init next_hyps[prefix + (s, )]
+                    n_pb, n_pnb = next_hyps[n_prefix]
+                    n_pnb = log_add([n_pnb, pb + ps])
+                    next_hyps[n_prefix] = (n_pb, n_pnb)
+
+            if s ==last:
+
+log_add : 
+    最终结果 = 最大的 + math.log(sum(math.exp(a - a_max) for a in args))
+    if all(a == -float('inf') for a in args):
+        return -float('inf')
+    a_max = max(args)
+    lsp = math.log(sum(math.exp(a - a_max) for a in args))
+
+
+
+'''
+
 ```
 
 ## 4.4 attention_rescoring
