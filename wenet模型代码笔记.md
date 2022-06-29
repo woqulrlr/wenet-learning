@@ -326,6 +326,8 @@ log_add :
     lsp = math.log(sum(math.exp(a - a_max) for a in args))
 
 
+![wenet_beamsearch](https://github.com/woqulrlr/wenet-learning/blob/main/wenet_beamsearch.jpg)
+
 
 '''
 
