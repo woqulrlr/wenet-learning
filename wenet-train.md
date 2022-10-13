@@ -3,7 +3,7 @@
 wenet toolkit进行训练流程时，需为train.py使用时配置"--config xxx.yaml"，可以选择transformer、conformer等不同的模型结构。本片笔记以transformer为例，记录解读wenet toolkit的训练流程。
 
 ## 3.1 初始化总体模型框架
-在train.py的169行调用init_asr_model()初始化模型，调用模型的实际操作是在wenet.transformer.asr_model完成。
+在train.py的169行调用init_asr_model()初始化模型，初始化模型的实际操作是在wenet.transformer.asr_model完成。
 ```
 from wenet.transformer.asr_model import init_asr_model
 # train.py ---> line 169
@@ -14,7 +14,11 @@ model = init_asr_model(configs)
 ## 3.2 初始化总体模型细节
 
 #### init()
-在asr_model.py文件,class ASRModel()类,__init__()方法,初始化模型总体框架。模型由encoder,decoder,ctc,criterion_att四个部分组成。
+在asr_model.py文件,class ASRModel()类,__init__()方法,初始化模型总体框架。模型由四个部分组成：
+- encoder,
+- decoder,
+- ctc,
+- criterion_att
 ```
 class ASRModel(torch.nn.Module):
     """CTC-attention hybrid Encoder-Decoder model"""
