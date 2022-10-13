@@ -202,7 +202,7 @@ x = residual + self.dropout(self.feed_forward(x))
 ```
 #### attention1 : torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.d_k)
 
-#### attention2 
+#### attention2 :
 
 再次通过view完成多头的合并,multi_head合并，shape[4, 4, 69, 64]===>[4, 69, 256]
 
@@ -225,7 +225,9 @@ x = residual + self.dropout(self.feed_forward(x))
         return self.linear_out(x)  # (batch, time1, d_model)
 ```
 
+
 ![multi_head_attention](https://github.com/woqulrlr/wenet-learning/blob/main/multi_head_attention.jpg)
+
 ![multi_head_attention](https://github.com/woqulrlr/wenet-learning/blob/main/attention_formula.jpg)
 
 
