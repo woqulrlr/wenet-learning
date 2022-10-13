@@ -68,6 +68,8 @@ class ASRModel(torch.nn.Module):
 
 ## 3.3 encode
 
+### 3.3.1 encode总体结构
+
 #### init()
 下面代码是encoder.py的TransformerEncoder类的init函数()，它展示wenet的encoder结构。
 
@@ -76,6 +78,8 @@ class ASRModel(torch.nn.Module):
 然后，transformerencoderlayer由2大块组成，MultiHeadedAttention、PositionwiseFeedForward。PositionwiseFeedForward简单的全连接层，详细可以直接看源代码。
 
 最后，如果选择Conformerencoderlayer作为block,而不是Transformerencoderlayer，子结构的子块可以从MultiHeadedAttention、RelPositionMultiHeadedAttention二者择其一。
+
+MultiHeadedAttention、PositionwiseFeedForward的具体实现和计算需要看from wenet.transformer.encoder_layer import TransformerEncoderLayer的代码。
 
 "attention is all you need"原文,Encoder: The encoder is composed of a stack of N = 6 identical layers. Each layer has two
 sub-layers. The first is a multi-head self-attention mechanism, and the second is a simple, position-wise fully connected feed-forward network
@@ -99,8 +103,11 @@ class TransformerEncoder(BaseEncoder):
         ])
 ```
 #### forward()
-1.mask待补充
-2.跑完6个block
+1.执行mask待补充
+
+2.执行TransformerEncoderLayer(MultiHeadedAttention, PositionwiseFeedForward)
+
+3.重复运行6次，跑完6个block
 ```
     def forward(...) :
         """Embed positions in tensor."""
@@ -115,4 +122,137 @@ class TransformerEncoder(BaseEncoder):
         if self.normalize_before:
             xs = self.after_norm(xs)
         return xs, masks
+```
+
+### 3.3.2 TransformerEncoderLayer
+
+#### init()
+
+self.self_attn = 对应encoder里面的MultiHeadedAttention,
+self.feed_forward = 对应encoder里面的PositionwiseFeedForward,
+还有一些其他简单计算
+```
+    def __init__(...):
+        """Construct an EncoderLayer object."""
+        super().__init__()
+        self.self_attn = self_attn
+        self.feed_forward = feed_forward
+        self.norm1 = nn.LayerNorm(size, eps=1e-12)
+        self.norm2 = nn.LayerNorm(size, eps=1e-12)
+        self.dropout = nn.Dropout(dropout_rate)
+        self.size = size
+        self.normalize_before = normalize_before
+        self.concat_after = concat_after
+        # concat_linear may be not used in forward fuction,
+        # but will be saved in the *.pt
+        self.concat_linear = nn.Linear(size + size, size)
+```
+#### forward()
+
+下面展示wenet的encoder_lyayer.py代码中transformer的实际计算过程，其实现与《attention is all you need》略有修改。
+* wenet使用transformer作为encoder时，无需在input emb加入position emb。
+* wenet构造encoder时，有self.normalize_before参数可选，前置layer_norm在残差之前，或者是后置layer_nromwenet example提供的yaml配置文件中，使用的是前置layer_norm，放置于残差residual之前。
+
+```
+# 按example配置文件简化后的执行顺序
+# 第一次 layer norm
+residual = x
+x = self.norm1(x)
+# 计算attention, 然后第一次残差
+x_q = x
+x = residual + self.dropout(self.self_attn(x_q, x, x, mask))
+# 第二次 layer norm
+residual = x
+x = self.norm2(x)
+# 计算feed_forward，然后第二次残差
+x = residual + self.dropout(self.feed_forward(x))
+```
+
+![transformer](https://github.com/woqulrlr/wenet-learning/blob/main/transformer.jpg)
+
+#### 3.3.2.1 MultiHeadedAttention
+
+#### init()
+
+增加几个linear层，李沐视频中解释，经过lineaer投影模型有更多的参数可以学习。
+```
+    def __init__(self, n_head: int, n_feat: int, dropout_rate: float):
+        """Construct an MultiHeadedAttention object."""
+        super().__init__()
+        assert n_feat % n_head == 0
+        # We assume d_v always equals d_k
+        self.d_k = n_feat // n_head
+        self.h = n_head
+        self.linear_q = nn.Linear(n_feat, n_feat)
+        self.linear_k = nn.Linear(n_feat, n_feat)
+        self.linear_v = nn.Linear(n_feat, n_feat)
+        self.linear_out = nn.Linear(n_feat, n_feat)
+        self.dropout = nn.Dropout(p=dropout_rate)
+```
+#### forward_qkv()
+此处代码对应下面右图,multi_head实际实现通过view改变数据shape,变形成multi_head所需形式.[4,69,256]===>[4,69,(4,64)]
+```
+        n_batch = query.size(0)
+        q = self.linear_q(query).view(n_batch, -1, self.h, self.d_k)
+        k = self.linear_k(key).view(n_batch, -1, self.h, self.d_k)
+        v = self.linear_v(value).view(n_batch, -1, self.h, self.d_k)
+        q = q.transpose(1, 2)  # (batch, head, time1, d_k)
+        k = k.transpose(1, 2)  # (batch, head, time2, d_k)
+        v = v.transpose(1, 2)  # (batch, head, time2, d_k)
+```
+#### attention1 : torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.d_k)
+
+#### attention2 
+
+再次通过view完成多头的合并,multi_head合并，shape[4, 4, 69, 64]===>[4, 69, 256]
+
+```
+        n_batch = value.size(0)
+        if mask is not None:
+            mask = mask.unsqueeze(1).eq(0)  # (batch, 1, *, time2)
+            scores = scores.masked_fill(mask, -float('inf'))
+            attn = torch.softmax(scores, dim=-1).masked_fill(
+                mask, 0.0)  # (batch, head, time1, time2)
+        else:
+            attn = torch.softmax(scores, dim=-1)  # (batch, head, time1, time2)
+
+        p_attn = self.dropout(attn)
+        x = torch.matmul(p_attn, value)  # (batch, head, time1, d_k)
+        x = (x.transpose(1, 2).contiguous().view(n_batch, -1,
+                                                 self.h * self.d_k)
+             )  # (batch, time1, d_model)
+
+        return self.linear_out(x)  # (batch, time1, d_model)
+```
+
+![multi_head_attention](https://github.com/woqulrlr/wenet-learning/blob/main/multi_head_attention.jpg)
+![multi_head_attention](https://github.com/woqulrlr/wenet-learning/blob/main/attention_formula.jpg)
+
+
+#### 3.3.2.2 PositionwiseFeedForward
+
+linear,activation,dropout,linear
+
+```
+    def __init__(self,
+                 idim: int,
+                 hidden_units: int,
+                 dropout_rate: float,
+                 activation: torch.nn.Module = torch.nn.ReLU()):
+        """Construct a PositionwiseFeedForward object."""
+        super(PositionwiseFeedForward, self).__init__()
+        self.w_1 = torch.nn.Linear(idim, hidden_units)
+        self.activation = activation
+        self.dropout = torch.nn.Dropout(dropout_rate)
+        self.w_2 = torch.nn.Linear(hidden_units, idim)
+
+    def forward(self, xs: torch.Tensor) -> torch.Tensor:
+        """Forward function.
+
+        Args:
+            xs: input tensor (B, L, D)
+        Returns:
+            output tensor, (B, L, D)
+        """
+        return self.w_2(self.dropout(self.activation(self.w_1(xs))))
 ```
