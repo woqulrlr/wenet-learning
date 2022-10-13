@@ -55,9 +55,7 @@ x + (np.random.random_sample(x.shape) - 0.5) * a ： 生成范围在([0,1) - 0.5
 
 # 3.训练train
 
-wenet toolkit进行训练流程时，需为train.py使用时配置"--config xxx.yaml"，可以选择transformer、conformer等不同的模型结构。
-本片笔记以transformer为例，记录解读wenet toolkit的训练流程。
-
+wenet toolkit进行训练流程时，需为train.py使用时配置"--config xxx.yaml"，可以选择transformer、conformer等不同的模型结构。本片笔记以transformer为例，记录解读wenet toolkit的训练流程。
 
 ## 3.1 train encode 代码outside
 
